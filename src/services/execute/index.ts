@@ -13,7 +13,7 @@ export type DatasetArgsMap = {
 };
 
 export type ExecuteArgs<D extends DatasetName> = {
-  dataset: D;
+  datasetId: D;
 } & DatasetArgsMap[D];
 
 export type ExecuteResult = {
@@ -21,12 +21,12 @@ export type ExecuteResult = {
   message: string;
 };
 
-export async function execute<D extends DatasetName>({ dataset, ...args }: ExecuteArgs<D>) {
-  switch (dataset) {
+export async function execute<D extends DatasetName>({ datasetId, ...args }: ExecuteArgs<D>) {
+  switch (datasetId) {
     case 'redis':
       return executeRedis(args);
 
     default:
-      throw new Error(`Unsupported dataset: ${dataset}`);
+      throw new Error(`Unsupported dataset "${datasetId}"`);
   }
 }

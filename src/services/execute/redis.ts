@@ -1,5 +1,6 @@
 import { createClient } from 'redis';
 
+import { parseCommand } from '../escape.js';
 import type { BaseExecuteArgs, ExecuteResult } from './index.js';
 
 export type LoadRedisArgs = Omit<ExecuteRedisArgs, 'query'>;
@@ -14,7 +15,7 @@ export type LoadRedisResponse = {
   | { ok: false; client: null }
 );
 
-export async function loadRedis({ port, user, dataset }: LoadRedisArgs): Promise<LoadRedisResponse> {
+export async function loadRedis({ port, user, dataset, noReset }: LoadRedisArgs): Promise<LoadRedisResponse> {
   if (!port) {
     return { ok: false, response: 'Unauthorized', client: null };
   }
@@ -24,7 +25,10 @@ export async function loadRedis({ port, user, dataset }: LoadRedisArgs): Promise
   });
 
   await client.connect();
-  await client.flushDb();
+
+  if (!noReset) {
+    await client.flushDb();
+  }
 
   try {
     for (const command of dataset) {
@@ -43,19 +47,25 @@ export type ExecuteRedisArgs = BaseExecuteArgs & {
   dataset: string[][];
 };
 
-export async function executeRedis({ port, user, query, dataset }: ExecuteRedisArgs): Promise<ExecuteResult> {
+export async function executeRedis({
+  port,
+  user,
+  query,
+  dataset,
+  noReset = false,
+}: ExecuteRedisArgs): Promise<ExecuteResult> {
   if (!port) {
     return { ok: false, response: 'Unauthorized' };
   }
 
-  const { ok, client, response: loadingResponse } = await loadRedis({ port, user, dataset });
+  const { ok, client, response: loadingResponse } = await loadRedis({ port, user, dataset, noReset });
 
   if (!ok) {
     return { ok, response: loadingResponse };
   }
 
   try {
-    const response = await client.sendCommand(query.split(' '));
+    const response = await client.sendCommand(parseCommand(query));
     const textResponse = response ? response.toString().trim() : '';
     return { ok: true, response: textResponse };
   } catch (error) {

@@ -1,6 +1,8 @@
 import { ObjectId } from 'mongodb';
 import type { WithId } from 'mongodb';
 
+import { execute } from './execute/index.js';
+import type { BaseExecuteArgs, DatasetName } from './execute/index.js';
 import type { Dataset } from './datasets.js';
 import type { Database } from './database.js';
 
@@ -11,7 +13,7 @@ export type User = {
 };
 
 export type TestSession = {
-  datasetId: string;
+  datasetId: DatasetName;
   tasks: {
     kind: string;
     question: string;
@@ -62,7 +64,7 @@ export async function getUser(args: GetUserArgs) {
 export type StartTestSessionArgs = {
   database: Database;
   user: WithId<User>;
-  datasetId: string;
+  datasetId: DatasetName;
   cathegories: Record<string, number>;
 };
 
@@ -140,4 +142,67 @@ export async function startTestSession({
   );
 
   return { ok: true, response: `"${datasetId}" test session started`, firstQuestion: tasks[0].question };
+}
+
+export type ExecuteQuestionArgs = BaseExecuteArgs & {
+  database: Database;
+};
+
+export async function executeQuestion({ database, user, query }: ExecuteQuestionArgs) {
+  if (!user.testSession) {
+    return { ok: false, response: 'Test session is not started' };
+  }
+
+  const { datasetId, tasks } = user.testSession;
+  const currentTaskIndex = tasks.findIndex(task => !task.userSolution);
+  if (currentTaskIndex === -1) {
+    return { ok: false, response: 'All questions have been answered' };
+  }
+  const currentTask = tasks[currentTaskIndex];
+
+  const error500 = { ok: false, response: 'Failed to test task. Please report to your teacher' };
+
+  const getFinalResponse = async (commandResponse: string) => {
+    if (!currentTask.test) {
+      return { ok: true, response: commandResponse };
+    }
+
+    const result = await execute({
+      datasetId,
+      query: currentTask.test,
+      user,
+      noReset: true,
+    });
+
+    if (!result.ok) {
+      return error500;
+    }
+    return result;
+  };
+
+  const { ok: solutionOk, response: solutionResponse } = await execute({ datasetId, query, user });
+  if (!solutionOk) {
+    return { ok: false, response: solutionResponse };
+  }
+  const solutionTest = await getFinalResponse(solutionResponse);
+  if (!solutionTest.ok) return error500;
+
+  const { ok: correctOk, response: correctResponse } = await execute({ datasetId, query: currentTask.solution, user });
+  if (!correctOk) return error500;
+  const correctTest = await getFinalResponse(correctResponse);
+  if (!correctTest.ok) return error500;
+
+  const isCorrect = solutionTest.response === correctTest.response;
+
+  await database.users.updateOne(
+    { user: user.user },
+    {
+      $set: {
+        [`testSession.tasks.${currentTaskIndex}.userSolution`]: query,
+        [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
+      },
+    },
+  );
+
+  return { ok: true, response: 'Solution submitted' };
 }

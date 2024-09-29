@@ -5,6 +5,7 @@ import { getDataset } from '../datasets.js';
 export type BaseExecuteArgs = {
   query: string;
   user: User;
+  noReset?: boolean;
 };
 
 export type DatasetName = 'redis';

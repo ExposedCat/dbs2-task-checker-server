@@ -2,8 +2,7 @@ import { Elysia, t } from 'elysia';
 import { jwt as jwtPlugin } from '@elysiajs/jwt';
 import { cors } from '@elysiajs/cors';
 
-import { getUser, loginUser, startTestSession } from './services/user.js';
-import { execute } from './services/execute/index.js';
+import { executeQuestion, getUser, loginUser, startTestSession } from './services/user.js';
 import type { DatasetName, ExecuteResult } from './services/execute/index.js';
 import { getDataset, getDatasets } from './services/datasets.js';
 import { createDbConnection } from './services/database.js';
@@ -104,6 +103,7 @@ const app = new Elysia()
     const nextTask =
       nextTaskIndex === undefined || nextTaskIndex === -1 ? null : user.testSession!.tasks[nextTaskIndex];
     return {
+      date: Date.now(),
       login: user.user,
       testSession: nextTask && {
         kind: nextTask.kind,
@@ -119,6 +119,7 @@ const app = new Elysia()
     ({ database, user, body }) =>
       startTestSession({
         ...body,
+        datasetId: body.datasetId as DatasetName,
         database,
         user,
       }),
@@ -139,14 +140,7 @@ const app = new Elysia()
   .get('/datasets', ({ database }) => getDatasets({ database }))
   .post(
     '/query',
-    async ({ user, body }): Promise<ExecuteResult> =>
-      user.testSession
-        ? execute({
-            query: body.query,
-            datasetId: user.testSession.datasetId as DatasetName,
-            user,
-          })
-        : { ok: false, response: 'Test session is not started' },
+    async ({ user, body, database }): Promise<ExecuteResult> => executeQuestion({ ...body, database, user }),
     {
       body: t.Object({ query: t.String() }),
     },

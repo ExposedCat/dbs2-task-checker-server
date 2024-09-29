@@ -1,15 +1,18 @@
-# Elysia with Bun runtime
+# CTU | DBS2 | Task Checker (Server)
 
-## Getting Started
-To get started with this template, simply paste this command into your terminal:
-```bash
-bun create elysia ./elysia-example
-```
+## Description
 
-## Development
-To start the development server run:
-```bash
-bun run dev
-```
+This package is an API backend for the Task Checker application
 
-Open http://localhost:3000/ with your browser to see the result.
+## Tech Stack
+
+- Language: **TypeScript (JavaScript)**
+- Runtime: **Bun**
+- Framework: **Elysia.JS**
+- Runtime type validation: **TypeBox** (part of the framework)
+- Database: **MongoDB**
+- DB Drivers: **redis**
+
+## License
+
+This code is licensed under the EUPL-1.2-only license

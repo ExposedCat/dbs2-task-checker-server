@@ -15,6 +15,7 @@ HSET product:6 name "Flat White" price 3.75 calories 170 caffeine 128 size "12 o
 HSET product:7 name "Cold Brew" price 3.25 calories 5 caffeine 155 size "16 oz"
 HSET product:8 name "Frappe" price 4.50 calories 400 caffeine 95 size "16 oz"
 SET global:current_promotion "BOGO Frappuccinos"
+SET global:current_promotion "BOGO Frappuccinos"
 SET global:loyalty_program:points_per_dollar 10
 SET global:maintenance:next_scheduled 1728345600
 SET global:coffee_supplier "Bean Masters Inc."

@@ -5,7 +5,7 @@ import type { Dataset } from './datasets.js';
 import type { Database } from './database.js';
 
 export type User = {
-  login: string;
+  user: string;
   password: string;
   testSession: TestSession | null;
 };
@@ -13,6 +13,7 @@ export type User = {
 export type TestSession = {
   datasetId: string;
   tasks: {
+    kind: string;
     question: string;
     solution: string;
     userSolution: string | null;

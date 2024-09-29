@@ -4,17 +4,12 @@ import { cors } from '@elysiajs/cors';
 
 import { getUser, loginUser, startTestSession } from './services/user.js';
 import { execute } from './services/execute/index.js';
-import { getDataset } from './services/datasets.js';
+import type { DatasetName, ExecuteResult } from './services/execute/index.js';
+import { getDataset, getDatasets } from './services/datasets.js';
 import { createDbConnection } from './services/database.js';
 
 // FIXME: Move to env
 const _database = await createDbConnection('mongodb://127.0.0.1:27017');
-
-const { ok, response: redisDataset } = await getDataset({ datasetId: 'redis', format: 'json' });
-
-if (!ok) {
-  throw redisDataset;
-}
 
 const app = new Elysia()
   .use(cors())
@@ -86,6 +81,12 @@ const app = new Elysia()
       }),
     },
   )
+  .get('/dataset', ({ query }) => getDataset({ ...query }), {
+    query: t.Object({
+      datasetId: t.String(),
+      format: t.Union([t.Literal('txt'), t.Literal('json')]),
+    }),
+  })
   .derive(async ({ database, jwt, headers, error }) => {
     const token = headers['authorization'];
     const data = await jwt.verify(token);
@@ -98,7 +99,21 @@ const app = new Elysia()
     }
     return { user };
   })
-  .get('/session', ({ user }) => user)
+  .get('/session', ({ user }) => {
+    const nextTaskIndex = user.testSession?.tasks.findIndex(task => !task.userSolution);
+    const nextTask =
+      nextTaskIndex === undefined || nextTaskIndex === -1 ? null : user.testSession!.tasks[nextTaskIndex];
+    return {
+      login: user.user,
+      testSession: nextTask && {
+        kind: nextTask.kind,
+        datasetId: user.testSession!.datasetId,
+        question: nextTask.question,
+        questionNumber: nextTaskIndex! + 1,
+        questionTotal: user.testSession!.tasks.length,
+      },
+    };
+  })
   .post(
     '/test-session',
     ({ database, user, body }) =>
@@ -116,34 +131,24 @@ const app = new Elysia()
             minimum: 1,
             maximum: 10,
           }),
-          {
-            minProperties: 1,
-          },
+          { minProperties: 1 },
         ),
       }),
     },
   )
-  .get('/dataset', ({ query }) => getDataset({ ...query }), {
-    query: t.Object({
-      datasetId: t.String(),
-      format: t.Union([t.Literal('txt'), t.Literal('json')]),
-    }),
-  })
+  .get('/datasets', ({ database }) => getDatasets({ database }))
   .post(
     '/query',
-    ({ user, body }) =>
-      execute({
-        ...(body as any), // TODO:
-        datasetId: body.dataset,
-        dataset: redisDataset,
-        user,
-      }),
+    async ({ user, body }): Promise<ExecuteResult> =>
+      user.testSession
+        ? execute({
+            query: body.query,
+            datasetId: user.testSession.datasetId as DatasetName,
+            user,
+          })
+        : { ok: false, response: 'Test session is not started' },
     {
-      body: t.Object({
-        dataset: t.String(),
-        query: t.String(),
-        port: t.Optional(t.Number()),
-      }),
+      body: t.Object({ query: t.String() }),
     },
   )
   .all('*', async ({ error }) => error(404, { message: 'Not Found' }))

@@ -1,5 +1,8 @@
 import fsp from 'fs/promises';
 
+import { parseCommand } from './escape.js';
+import type { Database } from './database.js';
+
 export type Dataset = {
   id: string;
   name: string;
@@ -37,10 +40,29 @@ export async function getDataset<F extends 'txt' | 'json'>(args: GetDatasetArgs<
       response: raw
         .split('\n')
         .filter(Boolean)
-        .map(line => line.split(' ')),
+        .map(command => parseCommand(command)),
     } as GetDatasetResponse<F>;
   } catch (error) {
     console.error(error);
     return { ok: false, response: 'Dataset not found' } as GetDatasetResponse<F>;
   }
+}
+
+export type GetDatasetsArgs = {
+  database: Database;
+};
+
+export async function getDatasets({ database }: GetDatasetsArgs) {
+  return database.datasets
+    .find<Pick<Dataset, 'id' | 'name'>>(
+      {},
+      {
+        projection: {
+          _id: false,
+          id: true,
+          name: true,
+        },
+      },
+    )
+    .toArray();
 }

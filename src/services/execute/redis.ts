@@ -1,6 +1,6 @@
 import { createClient } from 'redis';
 
-import type { BaseExecuteArgs } from './index.js';
+import type { BaseExecuteArgs, ExecuteResult } from './index.js';
 
 export type LoadRedisArgs = Omit<ExecuteRedisArgs, 'query'>;
 
@@ -24,6 +24,7 @@ export async function loadRedis({ port, user, dataset }: LoadRedisArgs): Promise
   });
 
   await client.connect();
+  await client.flushDb();
 
   try {
     for (const command of dataset) {
@@ -42,7 +43,7 @@ export type ExecuteRedisArgs = BaseExecuteArgs & {
   dataset: string[][];
 };
 
-export async function executeRedis({ port, user, query, dataset }: ExecuteRedisArgs) {
+export async function executeRedis({ port, user, query, dataset }: ExecuteRedisArgs): Promise<ExecuteResult> {
   if (!port) {
     return { ok: false, response: 'Unauthorized' };
   }

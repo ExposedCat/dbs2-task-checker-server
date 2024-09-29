@@ -118,24 +118,17 @@ const app = new Elysia()
     '/test-session',
     ({ database, user, body }) =>
       startTestSession({
-        ...body,
         datasetId: body.datasetId as DatasetName,
         database,
         user,
+        cathegories: {
+          select: 5,
+          insert: 5,
+          update: 5,
+          aggregate: 5,
+        },
       }),
-    {
-      body: t.Object({
-        datasetId: t.String(),
-        cathegories: t.Record(
-          t.String(),
-          t.Number({
-            minimum: 1,
-            maximum: 10,
-          }),
-          { minProperties: 1 },
-        ),
-      }),
-    },
+    { body: t.Object({ datasetId: t.String() }) },
   )
   .get('/datasets', ({ database }) => getDatasets({ database }))
   .post(

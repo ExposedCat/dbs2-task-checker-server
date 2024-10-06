@@ -10,7 +10,7 @@ export type Dataset = {
     kind: string;
     question: string;
     solution: string;
-    test: string;
+    test: string | null;
   }[];
 };
 
@@ -21,7 +21,7 @@ export type GetDatasetArgs<F extends 'txt' | 'json'> = {
 
 export type GetDatasetResponse<F extends 'txt' | 'json'> = F extends 'txt'
   ? string
-  : { ok: true; response: string[][] } | { ok: false; response: string };
+  : { ok: true; data: string[][]; error: null } | { ok: false; data: null; error: string };
 
 export async function getDataset<F extends 'txt' | 'json'>(args: GetDatasetArgs<F>): Promise<GetDatasetResponse<F>> {
   const { datasetId, format } = args;
@@ -37,14 +37,19 @@ export async function getDataset<F extends 'txt' | 'json'>(args: GetDatasetArgs<
 
     return {
       ok: true,
-      response: raw
+      data: raw
         .split('\n')
         .filter(Boolean)
         .map(command => parseCommand(command)),
+      error: null,
     } as GetDatasetResponse<F>;
   } catch (error) {
     console.error(error);
-    return { ok: false, response: 'Dataset not found' } as GetDatasetResponse<F>;
+    return {
+      ok: false,
+      data: null,
+      error: 'Dataset not found',
+    } as GetDatasetResponse<F>;
   }
 }
 
@@ -53,16 +58,20 @@ export type GetDatasetsArgs = {
 };
 
 export async function getDatasets({ database }: GetDatasetsArgs) {
-  return database.datasets
-    .find<Pick<Dataset, 'id' | 'name'>>(
-      {},
-      {
-        projection: {
-          _id: false,
-          id: true,
-          name: true,
+  return {
+    ok: true,
+    error: null,
+    data: await database.datasets
+      .find<Pick<Dataset, 'id' | 'name'>>(
+        {},
+        {
+          projection: {
+            _id: false,
+            id: true,
+            name: true,
+          },
         },
-      },
-    )
-    .toArray();
+      )
+      .toArray(),
+  };
 }

@@ -1,15 +1,22 @@
 import { ObjectId } from 'mongodb';
 import type { WithId } from 'mongodb';
 
+import type { ServiceResponse } from './response.js';
 import { execute } from './execute/index.js';
 import type { BaseExecuteArgs, DatasetName } from './execute/index.js';
 import type { Dataset } from './datasets.js';
 import type { Database } from './database.js';
 
+export type Submission = {
+  datasetId: DatasetName;
+  session: TestSession;
+};
+
 export type User = {
   user: string;
   password: string;
   testSession: TestSession | null;
+  submissions: Submission[];
 };
 
 export type TestSession = {
@@ -20,7 +27,7 @@ export type TestSession = {
     solution: string;
     userSolution: string | null;
     correct: boolean;
-    test: string;
+    test: string | null;
   }[];
 };
 
@@ -68,16 +75,20 @@ export type StartTestSessionArgs = {
   cathegories: Record<string, number>;
 };
 
-export type StartTestSessionResponse = { response: string } & (
+export type StartTestSessionResponse =
   | {
       ok: true;
-      firstQuestion: string;
+      data: {
+        firstQuestion: string;
+        response: string;
+      };
+      error: null;
     }
   | {
       ok: false;
-      firstQuestion: null;
-    }
-);
+      data: null;
+      error: string;
+    };
 
 export async function startTestSession({
   database,
@@ -86,7 +97,7 @@ export async function startTestSession({
   cathegories,
 }: StartTestSessionArgs): Promise<StartTestSessionResponse> {
   if (user.testSession) {
-    return { ok: false, response: 'Test session is already started', firstQuestion: null };
+    return { ok: false, error: 'Test session is already started', data: null };
   }
 
   const maxLimit = Math.max(...Object.values(cathegories));
@@ -125,7 +136,7 @@ export async function startTestSession({
   }
 
   if (sessionBank.length === 0) {
-    return { ok: false, response: 'No questions were found by criteria', firstQuestion: null };
+    return { ok: false, error: 'No questions were found by criteria', data: null };
   }
 
   const tasks = sessionBank.map(item => ({ ...item, correct: false, userSolution: null }));
@@ -141,30 +152,45 @@ export async function startTestSession({
     },
   );
 
-  return { ok: true, response: `"${datasetId}" test session started`, firstQuestion: tasks[0].question };
+  return {
+    ok: true,
+    data: {
+      firstQuestion: tasks[0].question,
+      response: `"${datasetId}" test session started`,
+    },
+    error: null,
+  };
 }
 
 export type ExecuteQuestionArgs = BaseExecuteArgs & {
   database: Database;
 };
 
-export async function executeQuestion({ database, user, query }: ExecuteQuestionArgs) {
+export type ExecuteQuestionResult = ServiceResponse<{
+  result: number | null;
+}>;
+
+export async function executeQuestion({ database, user, query }: ExecuteQuestionArgs): Promise<ExecuteQuestionResult> {
   if (!user.testSession) {
-    return { ok: false, response: 'Test session is not started' };
+    return { ok: false, error: 'Test session is not started', data: null };
   }
 
   const { datasetId, tasks } = user.testSession;
   const currentTaskIndex = tasks.findIndex(task => !task.userSolution);
   if (currentTaskIndex === -1) {
-    return { ok: false, response: 'All questions have been answered' };
+    return { ok: false, error: 'All questions have already been answered', data: null };
   }
   const currentTask = tasks[currentTaskIndex];
 
-  const error500 = { ok: false, response: 'Failed to test task. Please report to your teacher' };
+  const error500: ExecuteQuestionResult = {
+    ok: false,
+    error: 'Failed to test task. Please report to your teacher',
+    data: null,
+  };
 
-  const getFinalResponse = async (commandResponse: string) => {
+  const getFinalResponse = async (response: string): Promise<ServiceResponse<{ response: string }>> => {
     if (!currentTask.test) {
-      return { ok: true, response: commandResponse };
+      return { ok: true, data: { response }, error: null };
     }
 
     const result = await execute({
@@ -175,26 +201,34 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
     });
 
     if (!result.ok) {
+      console.error(`Failed to get final response`, result.error);
       return error500;
     }
+
     return result;
   };
 
-  const { ok: solutionOk, response: solutionResponse } = await execute({ datasetId, query, user });
-  if (!solutionOk) {
-    return { ok: false, response: solutionResponse };
+  const userResult = await execute({ datasetId, query, user });
+  if (!userResult.ok) return userResult;
+  const userTest = await getFinalResponse(userResult.data.response);
+  if (!userTest.ok) {
+    return error500;
   }
-  const solutionTest = await getFinalResponse(solutionResponse);
-  if (!solutionTest.ok) return error500;
 
-  const { ok: correctOk, response: correctResponse } = await execute({ datasetId, query: currentTask.solution, user });
-  if (!correctOk) return error500;
-  const correctTest = await getFinalResponse(correctResponse);
-  if (!correctTest.ok) return error500;
+  const correctResult = await execute({ datasetId, query: currentTask.solution, user });
+  if (!correctResult.ok) {
+    console.error(`Failed to execute test query`, correctResult.error);
+    return error500;
+  }
+  const correctTest = await getFinalResponse(correctResult.data.response);
+  if (!correctTest.ok) {
+    console.error(`Failed to execute test`, correctTest.error);
+    return error500;
+  }
 
-  const isCorrect = solutionTest.response === correctTest.response;
+  const isCorrect = userTest.data.response.trim() === correctTest.data.response.trim();
 
-  await database.users.updateOne(
+  const newUser = await database.users.findOneAndUpdate(
     { user: user.user },
     {
       $set: {
@@ -202,7 +236,34 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
         [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
       },
     },
+    {
+      returnDocument: 'after',
+    },
   );
 
-  return { ok: true, response: 'Solution submitted' };
+  if (!newUser) return error500;
+
+  const result =
+    newUser.testSession!.tasks.at(-1)?.userSolution !== null
+      ? newUser.testSession!.tasks.reduce((score, task) => score + Number(task.correct), 0)
+      : null;
+
+  if (result !== null) {
+    await database.users.updateOne(
+      { user: user.user },
+      {
+        $push: {
+          submissions: {
+            datasetId,
+            session: newUser!.testSession!,
+          },
+        },
+        $set: {
+          testSession: null,
+        },
+      },
+    );
+  }
+
+  return { ok: true, data: { result }, error: null };
 }

@@ -28,18 +28,20 @@ export async function loadRedis({ port, user, dataset, noReset }: LoadRedisArgs)
 
   if (!noReset) {
     await client.flushDb();
+
+    try {
+      for (const command of dataset) {
+        await client.sendCommand(command);
+      }
+      return { ok: true, response: 'Dataset loaded', client };
+    } catch (error) {
+      const textError = error instanceof Error ? error.message : 'Unkown error';
+      await client.quit();
+      return { ok: false, response: textError, client: null };
+    }
   }
 
-  try {
-    for (const command of dataset) {
-      await client.sendCommand(command);
-    }
-    return { ok: true, response: 'Dataset loaded', client };
-  } catch (error) {
-    const textError = error instanceof Error ? error.message : 'Unkown error';
-    await client.quit();
-    return { ok: false, response: textError, client: null };
-  }
+  return { ok: true, response: 'Dataset not loaded (noReset = true)', client };
 }
 
 export type ExecuteRedisArgs = BaseExecuteArgs & {
@@ -55,23 +57,34 @@ export async function executeRedis({
   noReset = false,
 }: ExecuteRedisArgs): Promise<ExecuteResult> {
   if (!port) {
-    return { ok: false, response: 'Unauthorized' };
+    return { ok: false, error: 'Unauthorized', data: null };
   }
 
+  console.log('$redis -> noRezet = ', noReset);
   const { ok, client, response: loadingResponse } = await loadRedis({ port, user, dataset, noReset });
 
   if (!ok) {
-    return { ok, response: loadingResponse };
+    return { ok, error: loadingResponse, data: null };
   }
 
-  try {
-    const response = await client.sendCommand(parseCommand(query));
-    const textResponse = response ? response.toString().trim() : '';
-    return { ok: true, response: textResponse };
-  } catch (error) {
-    const textError = error instanceof Error ? error.message : 'Unkown error';
-    return { ok: false, response: textError };
-  } finally {
-    await client.quit();
+  const queries = query.split('\n');
+  let batchResponse = '';
+  for (const singleQuery of queries) {
+    try {
+      const response = await client.sendCommand(parseCommand(singleQuery));
+      const textResponse = response ? response.toString().trim() : '';
+      batchResponse += `${textResponse}\n`;
+    } catch (error) {
+      await client.quit();
+      const textError = error instanceof Error ? error.message : 'Unkown error';
+      return { ok: false, error: textError, data: null };
+    }
   }
+
+  await client.quit();
+  return {
+    ok: true,
+    data: { response: batchResponse },
+    error: null,
+  };
 }

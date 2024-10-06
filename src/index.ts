@@ -3,7 +3,8 @@ import { jwt as jwtPlugin } from '@elysiajs/jwt';
 import { cors } from '@elysiajs/cors';
 
 import { executeQuestion, getUser, loginUser, startTestSession } from './services/user.js';
-import type { DatasetName, ExecuteResult } from './services/execute/index.js';
+import type { ServiceResponse } from './services/response.js';
+import type { DatasetName } from './services/execute/index.js';
 import { getDataset, getDatasets } from './services/datasets.js';
 import { createDbConnection } from './services/database.js';
 
@@ -64,13 +65,19 @@ const app = new Elysia()
   // )
   .post(
     '/login',
-    async ({ jwt, body, database, error }) => {
+    async ({ jwt, body, database }) => {
       const userId = await loginUser({ database, ...body });
       if (!userId) {
-        return error(401, 'Unauthorized');
+        return {
+          ok: false,
+          data: null,
+          error: 'Login failed',
+        };
       }
       return {
-        token: await jwt.sign({ userId }),
+        ok: true,
+        data: await jwt.sign({ userId }),
+        error: null,
       };
     },
     {
@@ -90,11 +97,19 @@ const app = new Elysia()
     const token = headers['authorization'];
     const data = await jwt.verify(token);
     if (!data) {
-      return error(401, 'Unauthorized');
+      return error(200, {
+        ok: false,
+        data: null,
+        error: 'Unauthorized',
+      });
     }
     const user = await getUser({ database, userId: data.userId });
     if (!user) {
-      return error(401, 'Unauthorized');
+      return error(200, {
+        ok: false,
+        data: null,
+        error: 'Unauthorized',
+      });
     }
     return { user };
   })
@@ -103,15 +118,19 @@ const app = new Elysia()
     const nextTask =
       nextTaskIndex === undefined || nextTaskIndex === -1 ? null : user.testSession!.tasks[nextTaskIndex];
     return {
-      date: Date.now(),
-      login: user.user,
-      testSession: nextTask && {
-        kind: nextTask.kind,
-        datasetId: user.testSession!.datasetId,
-        question: nextTask.question,
-        questionNumber: nextTaskIndex! + 1,
-        questionTotal: user.testSession!.tasks.length,
+      ok: true,
+      data: {
+        date: Date.now(),
+        login: user.user,
+        testSession: nextTask && {
+          kind: nextTask.kind,
+          datasetId: user.testSession!.datasetId,
+          question: nextTask.question,
+          questionNumber: nextTaskIndex! + 1,
+          questionTotal: user.testSession!.tasks.length,
+        },
       },
+      error: null,
     };
   })
   .post(
@@ -133,7 +152,8 @@ const app = new Elysia()
   .get('/datasets', ({ database }) => getDatasets({ database }))
   .post(
     '/query',
-    async ({ user, body, database }): Promise<ExecuteResult> => executeQuestion({ ...body, database, user }),
+    async ({ user, body, database }): Promise<ServiceResponse<{ result: number | null }>> =>
+      executeQuestion({ ...body, database, user }),
     {
       body: t.Object({ query: t.String() }),
     },

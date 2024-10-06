@@ -1,5 +1,6 @@
 import { executeRedis, type ExecuteRedisArgs } from './redis.js';
 import type { User } from '../user.js';
+import type { ServiceResponse } from '../response.js';
 import { getDataset } from '../datasets.js';
 
 export type BaseExecuteArgs = {
@@ -18,13 +19,10 @@ export type ExecuteArgs = {
   datasetId: DatasetName;
 } & BaseExecuteArgs;
 
-export type ExecuteResult = {
-  ok: boolean;
-  response: string;
-};
+export type ExecuteResult = ServiceResponse<{ response: string }>;
 
 // FIXME: Move to service
-const { ok, response: redisDataset } = await getDataset({ datasetId: 'redis', format: 'json' });
+const { ok, data: redisDataset } = await getDataset({ datasetId: 'redis', format: 'json' });
 
 export async function execute({ datasetId, ...args }: ExecuteArgs): Promise<ExecuteResult> {
   if (!ok) {

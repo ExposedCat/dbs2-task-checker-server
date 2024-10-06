@@ -8,8 +8,7 @@ import type { DatasetName } from './services/execute/index.js';
 import { getDataset, getDatasets } from './services/datasets.js';
 import { createDbConnection } from './services/database.js';
 
-// FIXME: Move to env
-const _database = await createDbConnection('mongodb://127.0.0.1:27017');
+const _database = await createDbConnection(`mongodb://127.0.0.1:${process.env.DB_PORT ?? 27017}`);
 
 const app = new Elysia()
   .use(cors())

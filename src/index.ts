@@ -112,11 +112,14 @@ const app = new Elysia()
     }
     return { user };
   })
-  .get('/session', ({ user }) => {
+  .get('/session', async ({ user, database }) => {
     // FIXME:
-    const availableTests = user.submissions
-      .filter(submission => submission.grade < 10)
-      .map(submission => submission.datasetId);
+    const { data } = await getDatasets({ database });
+    const availableTests = data
+      .filter(
+        dataset => !user.submissions.some(submission => submission.datasetId === dataset.id && submission.grade >= 10),
+      )
+      .map(dataset => dataset.id);
     const nextTaskIndex = user.testSession?.tasks.findIndex(task => !task.userSolution);
     const nextTask =
       nextTaskIndex === undefined || nextTaskIndex === -1 ? null : user.testSession!.tasks[nextTaskIndex];

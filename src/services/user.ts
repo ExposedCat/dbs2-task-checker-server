@@ -168,6 +168,7 @@ export type ExecuteQuestionArgs = BaseExecuteArgs & {
 
 export type ExecuteQuestionResult = ServiceResponse<{
   result: number | null;
+  wrong: string[];
 }>;
 
 export async function executeQuestion({ database, user, query }: ExecuteQuestionArgs): Promise<ExecuteQuestionResult> {
@@ -227,6 +228,14 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
   }
 
   const isCorrect = userTest.data.response.trim() === correctTest.data.response.trim();
+  // console.log(`=====`, isCorrect);
+  // console.log(`User Solution "${query.trim()}"`);
+  // console.log(`User Result "${userResult.data.response.trim()}"`);
+  // console.log(`User Test "${userTest.data.response.trim()}"`);
+  // console.log(`Correct Solution "${currentTask.solution.trim()}"`);
+  // console.log(`Correct Result "${correctResult.data.response.trim()}"`);
+  // console.log(`Correct Test "${correctTest.data.response.trim()}"`);
+  // console.log(`Test query = "${currentTask.test ?? '<None>'}"`);
 
   const newUser = await database.users.findOneAndUpdate(
     { user: user.user },
@@ -265,5 +274,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
     );
   }
 
-  return { ok: true, data: { result }, error: null };
+  const wrong = newUser.testSession?.tasks.filter(task => !task.correct).map(task => task.question) ?? [];
+
+  return { ok: true, data: { result, wrong }, error: null };
 }

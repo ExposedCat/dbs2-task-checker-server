@@ -60,7 +60,6 @@ export async function executeRedis({
     return { ok: false, error: 'Unauthorized', data: null };
   }
 
-  console.log('$redis -> noRezet = ', noReset);
   const { ok, client, response: loadingResponse } = await loadRedis({ port, user, dataset, noReset });
 
   if (!ok) {

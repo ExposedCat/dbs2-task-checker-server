@@ -113,6 +113,10 @@ const app = new Elysia()
     return { user };
   })
   .get('/session', ({ user }) => {
+    // FIXME:
+    const availableTests = user.submissions
+      .filter(submission => submission.grade < 10)
+      .map(submission => submission.datasetId);
     const nextTaskIndex = user.testSession?.tasks.findIndex(task => !task.userSolution);
     const nextTask =
       nextTaskIndex === undefined || nextTaskIndex === -1 ? null : user.testSession!.tasks[nextTaskIndex];
@@ -128,6 +132,7 @@ const app = new Elysia()
           questionNumber: nextTaskIndex! + 1,
           questionTotal: user.testSession!.tasks.length,
         },
+        availableTests,
       },
       error: null,
     };
@@ -140,11 +145,12 @@ const app = new Elysia()
         database,
         user,
         cathegories: {
-          select: 5,
-          insert: 5,
-          update: 5,
-          aggregate: 5,
+          select: 6,
+          insert: 3,
+          update: 3,
+          // aggregate: 0,
         },
+        minPoints: 10,
       }),
     { body: t.Object({ datasetId: t.String() }) },
   )

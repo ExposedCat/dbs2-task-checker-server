@@ -9,6 +9,7 @@ import type { Database } from './database.js';
 
 export type Submission = {
   datasetId: DatasetName;
+  grade: number;
   session: TestSession;
 };
 
@@ -72,6 +73,7 @@ export type StartTestSessionArgs = {
   database: Database;
   user: WithId<User>;
   datasetId: DatasetName;
+  minPoints: number;
   cathegories: Record<string, number>;
 };
 
@@ -95,9 +97,14 @@ export async function startTestSession({
   user,
   datasetId,
   cathegories,
+  minPoints,
 }: StartTestSessionArgs): Promise<StartTestSessionResponse> {
   if (user.testSession) {
     return { ok: false, error: 'Test session is already started', data: null };
+  }
+
+  if (user.submissions.some(submission => submission.datasetId === datasetId && submission.grade >= minPoints)) {
+    return { ok: false, error: 'Test for this dataset is already passed', data: null };
   }
 
   const maxLimit = Math.max(...Object.values(cathegories));
@@ -264,6 +271,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
         $push: {
           submissions: {
             datasetId,
+            grade: result,
             session: newUser!.testSession!,
           },
         },

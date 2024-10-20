@@ -71,7 +71,7 @@ export async function executeRedis({
   for (const singleQuery of queries) {
     try {
       const response = await client.sendCommand(parseCommand(singleQuery));
-      const textResponse = response ? response.toString().trim() : '';
+      const textResponse = response !== undefined && response !== null ? response.toString().trim() : '';
       batchResponse += `${textResponse}\n`;
     } catch (error) {
       await client.quit();

@@ -15,13 +15,9 @@ export type LoadRedisResponse = {
   | { ok: false; client: null }
 );
 
-export async function loadRedis({ port, user, dataset, noReset }: LoadRedisArgs): Promise<LoadRedisResponse> {
-  if (!port) {
-    return { ok: false, response: 'Unauthorized', client: null };
-  }
-
+export async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<LoadRedisResponse> {
   const client = createClient({
-    url: `redis://default:${user.password}@127.0.0.1:${port}`,
+    url: `redis://default:${user.password}@127.0.0.1:${user.port}`,
   });
 
   await client.connect();
@@ -45,22 +41,16 @@ export async function loadRedis({ port, user, dataset, noReset }: LoadRedisArgs)
 }
 
 export type ExecuteRedisArgs = BaseExecuteArgs & {
-  port: number;
   dataset: string[][];
 };
 
 export async function executeRedis({
-  port,
   user,
   query,
   dataset,
   noReset = false,
 }: ExecuteRedisArgs): Promise<ExecuteResult> {
-  if (!port) {
-    return { ok: false, error: 'Unauthorized', data: null };
-  }
-
-  const { ok, client, response: loadingResponse } = await loadRedis({ port, user, dataset, noReset });
+  const { ok, client, response: loadingResponse } = await loadRedis({ user, dataset, noReset });
 
   if (!ok) {
     return { ok, error: loadingResponse, data: null };

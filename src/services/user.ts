@@ -15,6 +15,7 @@ export type Submission = {
 
 export type User = {
   user: string;
+  port: number;
   password: string;
   testSession: TestSession | null;
   submissions: Submission[];

@@ -31,8 +31,7 @@ export async function execute({ datasetId, ...args }: ExecuteArgs): Promise<Exec
 
   switch (datasetId) {
     case 'redis':
-      // TODO: Move port to db
-      return executeRedis({ ...args, dataset: redisDataset, port: 6379 });
+      return executeRedis({ ...args, dataset: redisDataset });
 
     default:
       throw new Error(`Unsupported dataset "${datasetId}"`);

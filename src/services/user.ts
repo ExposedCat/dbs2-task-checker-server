@@ -105,7 +105,11 @@ export async function startTestSession({
   }
 
   if (user.submissions.some(submission => submission.datasetId === datasetId && submission.grade >= minPoints)) {
-    return { ok: false, error: 'Test for this dataset is already passed', data: null };
+    return {
+      ok: false,
+      error: 'Test for this dataset is already passed',
+      data: null,
+    };
   }
 
   const maxLimit = Math.max(...Object.values(cathegories));
@@ -115,21 +119,21 @@ export async function startTestSession({
       kind: string;
       bank: Dataset['bank'];
     }>([
-      { '$match': { 'id': datasetId } },
-      { '$unwind': { 'path': '$bank' } },
-      { '$addFields': { 'random': { '$rand': {} } } },
-      { '$sort': { 'random': 1 } },
+      { $match: { id: datasetId } },
+      { $unwind: { path: '$bank' } },
+      { $addFields: { random: { $rand: {} } } },
+      { $sort: { random: 1 } },
       {
-        '$group': {
-          '_id': '$bank.kind',
-          'bank': { '$push': '$bank' },
+        $group: {
+          _id: '$bank.kind',
+          bank: { $push: '$bank' },
         },
       },
       {
-        '$project': {
-          '_id': 0,
-          'kind': '$_id',
-          'bank': { '$slice': ['$bank', maxLimit] },
+        $project: {
+          _id: 0,
+          kind: '$_id',
+          bank: { $slice: ['$bank', maxLimit] },
         },
       },
     ])
@@ -144,10 +148,18 @@ export async function startTestSession({
   }
 
   if (sessionBank.length === 0) {
-    return { ok: false, error: 'No questions were found by criteria', data: null };
+    return {
+      ok: false,
+      error: 'No questions were found by criteria',
+      data: null,
+    };
   }
 
-  const tasks = sessionBank.map(item => ({ ...item, correct: false, userSolution: null }));
+  const tasks = sessionBank.map(item => ({
+    ...item,
+    correct: false,
+    userSolution: null,
+  }));
   await database.users.updateOne(
     { _id: user._id },
     {
@@ -164,7 +176,7 @@ export async function startTestSession({
     ok: true,
     data: {
       firstQuestion: tasks[0].question,
-      response: `"${datasetId}" test session started`,
+      response: `'${datasetId}' test session started`,
     },
     error: null,
   };
@@ -187,7 +199,11 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
   const { datasetId, tasks } = user.testSession;
   const currentTaskIndex = tasks.findIndex(task => !task.userSolution);
   if (currentTaskIndex === -1) {
-    return { ok: false, error: 'All questions have already been answered', data: null };
+    return {
+      ok: false,
+      error: 'All questions have already been answered',
+      data: null,
+    };
   }
   const currentTask = tasks[currentTaskIndex];
 
@@ -210,7 +226,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
     });
 
     if (!result.ok) {
-      console.error(`Failed to get final response`, result.error);
+      console.error('Failed to get final response', result.error);
       return error500;
     }
 
@@ -224,26 +240,30 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
     return error500;
   }
 
-  const correctResult = await execute({ datasetId, query: currentTask.solution, user });
+  const correctResult = await execute({
+    datasetId,
+    query: currentTask.solution,
+    user,
+  });
   if (!correctResult.ok) {
-    console.error(`Failed to execute test query`, correctResult.error);
+    console.error('Failed to execute test query', correctResult.error);
     return error500;
   }
   const correctTest = await getFinalResponse(correctResult.data.response);
   if (!correctTest.ok) {
-    console.error(`Failed to execute test`, correctTest.error);
+    console.error('Failed to execute test', correctTest.error);
     return error500;
   }
 
   const isCorrect = userTest.data.response.trim() === correctTest.data.response.trim();
   // console.log(`=====`, isCorrect);
-  // console.log(`User Solution "${query.trim()}"`);
-  // console.log(`User Result "${userResult.data.response.trim()}"`);
-  // console.log(`User Test "${userTest.data.response.trim()}"`);
-  // console.log(`Correct Solution "${currentTask.solution.trim()}"`);
-  // console.log(`Correct Result "${correctResult.data.response.trim()}"`);
-  // console.log(`Correct Test "${correctTest.data.response.trim()}"`);
-  // console.log(`Test query = "${currentTask.test ?? '<None>'}"`);
+  // console.log(`User Solution '${query.trim()}'`);
+  // console.log(`User Result '${userResult.data.response.trim()}'`);
+  // console.log(`User Test '${userTest.data.response.trim()}'`);
+  // console.log(`Correct Solution '${currentTask.solution.trim()}'`);
+  // console.log(`Correct Result '${correctResult.data.response.trim()}'`);
+  // console.log(`Correct Test '${correctTest.data.response.trim()}'`);
+  // console.log(`Test query = '${currentTask.test ?? '<None>'}'`);
 
   const newUser = await database.users.findOneAndUpdate(
     { user: user.user },

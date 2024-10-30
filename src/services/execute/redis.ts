@@ -50,7 +50,15 @@ export async function executeRedis({
   dataset,
   noReset = false,
 }: ExecuteRedisArgs): Promise<ExecuteResult> {
-  const { ok, client, response: loadingResponse } = await loadRedis({ user, dataset, noReset });
+  const {
+    ok,
+    client,
+    response: loadingResponse,
+  } = await loadRedis({
+    user,
+    dataset,
+    noReset,
+  });
 
   if (!ok) {
     return { ok, error: loadingResponse, data: null };

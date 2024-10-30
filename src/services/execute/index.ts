@@ -22,9 +22,12 @@ export type ExecuteArgs = {
 export type ExecuteResult = ServiceResponse<{ response: string }>;
 
 // FIXME: Move to service
-const { ok, data: redisDataset } = await getDataset({ datasetId: 'redis', format: 'json' });
+const { ok, data: redisDataset } = await getDataset({
+  datasetId: 'redis',
+  format: 'json',
+});
 
-export async function execute({ datasetId, ...args }: ExecuteArgs): Promise<ExecuteResult> {
+export function execute({ datasetId, ...args }: ExecuteArgs): Promise<ExecuteResult> {
   if (!ok) {
     throw redisDataset;
   }
@@ -34,6 +37,6 @@ export async function execute({ datasetId, ...args }: ExecuteArgs): Promise<Exec
       return executeRedis({ ...args, dataset: redisDataset });
 
     default:
-      throw new Error(`Unsupported dataset "${datasetId}"`);
+      throw new Error(`Unsupported dataset '${datasetId}'`);
   }
 }

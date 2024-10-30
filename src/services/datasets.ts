@@ -1,7 +1,5 @@
-import fsp from 'fs/promises';
-
-import { parseCommand } from './escape.js';
 import type { Database } from './database.js';
+import { parseCommand } from './escape.js';
 
 export type Dataset = {
   id: string;
@@ -21,7 +19,13 @@ export type GetDatasetArgs<F extends 'txt' | 'json'> = {
 
 export type GetDatasetResponse<F extends 'txt' | 'json'> = F extends 'txt'
   ? string
-  : { ok: true; data: string[][]; error: null } | { ok: false; data: null; error: string };
+  :
+      | { ok: true; data: string[][]; error: null }
+      | {
+          ok: false;
+          data: null;
+          error: string;
+        };
 
 export async function getDataset<F extends 'txt' | 'json'>(args: GetDatasetArgs<F>): Promise<GetDatasetResponse<F>> {
   const { datasetId, format } = args;
@@ -29,7 +33,7 @@ export async function getDataset<F extends 'txt' | 'json'>(args: GetDatasetArgs<
   const trimmed = datasetId.split('/')[0];
 
   try {
-    const raw = await fsp.readFile(`${import.meta.dir}/../../datasets/${trimmed}/dataset.txt`, 'utf8');
+    const raw = await Bun.file(`${process.cwd()}/datasets/${trimmed}/dataset.txt`).text();
 
     if (format === 'txt') {
       return raw as GetDatasetResponse<F>;

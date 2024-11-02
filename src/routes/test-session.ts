@@ -1,6 +1,5 @@
 import Elysia, { t } from 'elysia';
 import { RequireAuth } from '../middlewares/auth';
-import { RequireBase } from '../middlewares/base';
 import type { DatasetName } from '../services/execute';
 import { startTestSession } from '../services/user';
 

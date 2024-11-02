@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia';
 
-import { RequireBase } from '../middlewares/base.js';
-import { loginUser } from '../services/user.js';
+import { RequireBase } from '../middlewares/base';
+import { loginUser } from '../services/user';
 
 export const LoginRoute = new Elysia({ name: 'Route.Login' }) //
   .use(RequireBase)

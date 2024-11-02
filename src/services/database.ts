@@ -1,8 +1,8 @@
 import { MongoClient } from 'mongodb';
 import type { Collection } from 'mongodb';
 
-import type { User } from './user.js';
-import type { Dataset } from './datasets.js';
+import type { Dataset } from './dataset';
+import type { User } from './user';
 
 export type Database = {
   users: Collection<User>;

@@ -8,11 +8,15 @@ import { LoginRoute } from './routes/login.js';
 import { QueryRoute } from './routes/query.js';
 import { SessionRoute } from './routes/session.js';
 import { TestSessionRoute } from './routes/test-session.js';
+import { UploadDatasetRoute } from './routes/upload-dataset.js';
 
 const app = new Elysia()
   .use(RequireBase)
+  // Public
   .use(LoginRoute)
   .use(DatasetRoute)
+  // Private
+  .use(UploadDatasetRoute)
   .use(SessionRoute)
   .use(DatasetsRoute)
   .use(TestSessionRoute)

@@ -1,11 +1,11 @@
 import { ObjectId } from 'mongodb';
 import type { WithId } from 'mongodb';
 
-import type { ServiceResponse } from './response.js';
-import { execute } from './execute/index.js';
-import type { BaseExecuteArgs, DatasetName } from './execute/index.js';
-import type { Dataset } from './datasets.js';
-import type { Database } from './database.js';
+import type { Database } from './database';
+import type { Dataset } from './dataset';
+import { execute } from './execute/index';
+import type { BaseExecuteArgs, DatasetName } from './execute/index';
+import type { ServiceResponse } from './response';
 
 export type Submission = {
   datasetId: DatasetName;
@@ -19,6 +19,7 @@ export type User = {
   password: string;
   testSession: TestSession | null;
   submissions: Submission[];
+  admin: boolean;
 };
 
 export type TestSession = {

@@ -1,7 +1,7 @@
-import { executeRedis, type ExecuteRedisArgs } from './redis.js';
-import type { User } from '../user.js';
-import type { ServiceResponse } from '../response.js';
-import { getDataset } from '../datasets.js';
+import { readDataset } from '../dataset.js';
+import type { ServiceResponse } from '../response';
+import type { User } from '../user';
+import { type ExecuteRedisArgs, executeRedis } from './redis';
 
 export type BaseExecuteArgs = {
   query: string;
@@ -22,7 +22,7 @@ export type ExecuteArgs = {
 export type ExecuteResult = ServiceResponse<{ response: string }>;
 
 // FIXME: Move to service
-const { ok, data: redisDataset } = await getDataset({
+const { ok, data: redisDataset } = await readDataset({
   datasetId: 'redis',
   format: 'json',
 });

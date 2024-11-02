@@ -1,6 +1,6 @@
 import Elysia from 'elysia';
 import { RequireAuth } from '../middlewares/auth';
-import { getDatasets } from '../services/datasets';
+import { getDatasets } from '../services/dataset';
 
 export const SessionRoute = new Elysia({ name: 'Route.Session' })
   .use(RequireAuth)

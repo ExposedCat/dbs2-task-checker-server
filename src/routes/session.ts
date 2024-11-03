@@ -28,6 +28,7 @@ export const SessionRoute = new Elysia({ name: 'Route.Session' })
           questionTotal: user.testSession!.tasks.length,
         },
         availableTests,
+        admin: user.admin,
       },
       error: null,
     };

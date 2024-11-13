@@ -7,6 +7,7 @@ import { SetDatasetKindsRoute } from './routes/dataset-kinds.post.js';
 import { DatasetRoute } from './routes/dataset.get.js';
 import { UploadDatasetRoute } from './routes/dataset.post.js';
 import { DatasetsRoute } from './routes/datasets.get.js';
+import { DeleteDatasetRoute } from './routes/delete-dataset.post.js';
 import { LoginRoute } from './routes/login.post.js';
 import { QueryRoute } from './routes/query.post.js';
 import { SessionRoute } from './routes/session.get.js';
@@ -26,6 +27,7 @@ const app = new Elysia()
   .use(DatasetKindsRoute)
   .use(SetDatasetKindsRoute)
   .use(RequireErrorFallback)
+  .use(DeleteDatasetRoute)
   .listen(8080);
 
 console.log(`🦊 DBS Portal API is running at http://${app.server?.hostname}:${app.server?.port}`);

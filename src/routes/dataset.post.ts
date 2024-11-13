@@ -1,6 +1,6 @@
 import Elysia, { t } from 'elysia';
 import { RequireAuth } from '../middlewares/auth';
-import { type RawDatasetEntry, createOrUpdateDataset } from '../services/dataset';
+import { type RawDatasetEntry, createOrUpdateDataset, setDatasetKinds } from '../services/dataset';
 import { parseJsonFile } from '../services/file';
 
 export const UploadDatasetRoute = new Elysia({ name: 'Route.UploadDataset' }) //

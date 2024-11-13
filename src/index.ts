@@ -2,13 +2,15 @@ import { Elysia } from 'elysia';
 
 import { RequireBase } from './middlewares/base.js';
 import { RequireErrorFallback } from './middlewares/fallback.js';
-import { DatasetRoute } from './routes/dataset.js';
-import { DatasetsRoute } from './routes/datasets.js';
-import { LoginRoute } from './routes/login.js';
-import { QueryRoute } from './routes/query.js';
-import { SessionRoute } from './routes/session.js';
-import { TestSessionRoute } from './routes/test-session.js';
-import { UploadDatasetRoute } from './routes/upload-dataset.js';
+import { DatasetKindsRoute } from './routes/dataset-kinds.get.js';
+import { SetDatasetKindsRoute } from './routes/dataset-kinds.post.js';
+import { DatasetRoute } from './routes/dataset.get.js';
+import { UploadDatasetRoute } from './routes/dataset.post.js';
+import { DatasetsRoute } from './routes/datasets.get.js';
+import { LoginRoute } from './routes/login.post.js';
+import { QueryRoute } from './routes/query.post.js';
+import { SessionRoute } from './routes/session.get.js';
+import { TestSessionRoute } from './routes/test-session.post.js';
 
 const app = new Elysia()
   .use(RequireBase)
@@ -21,6 +23,8 @@ const app = new Elysia()
   .use(DatasetsRoute)
   .use(TestSessionRoute)
   .use(QueryRoute)
+  .use(DatasetKindsRoute)
+  .use(SetDatasetKindsRoute)
   .use(RequireErrorFallback)
   .listen(8080);
 

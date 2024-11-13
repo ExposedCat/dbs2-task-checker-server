@@ -5,7 +5,11 @@ import cors from '@elysiajs/cors';
 import { createDbConnection } from '../services/database';
 
 export const RequireBase = new Elysia({ name: 'Middleware.Base' })
-  .use(cors())
+  .use(
+    cors({
+      origin: true,
+    }),
+  )
   .use(
     jwtPlugin({
       name: 'jwt',

@@ -5,6 +5,7 @@ import type { ServiceResponse } from './response.js';
 export type Dataset = {
   id: string;
   name: string;
+  kinds: Record<string, number>;
   bank: {
     kind: string;
     question: string;
@@ -68,7 +69,7 @@ export async function getDatasets({ database }: GetDatasetsArgs) {
     error: null,
     data: await database.datasets
       .find<Pick<Dataset, 'id' | 'name'>>(
-        {},
+        { kinds: { $ne: undefined } },
         {
           projection: {
             _id: false,
@@ -118,10 +119,100 @@ export async function createOrUpdateDataset({
       $setOnInsert: {
         id,
         name,
+        [`kinds.${kind}`]: 1,
       },
     },
     { upsert: true },
   );
 
   return { ok: true, data: null, error: null };
+}
+
+export type SetDatasetKindsArgs = {
+  datasetId: string;
+  kinds: Record<string, number>;
+  database: Database;
+};
+
+export async function setDatasetKinds({
+  datasetId,
+  kinds,
+  database,
+}: SetDatasetKindsArgs): Promise<ServiceResponse<null>> {
+  await database.datasets.updateOne(
+    { id: datasetId },
+    { $set: Object.fromEntries(Object.entries(kinds).map(([kind, value]) => [`kinds.${kind}`, value])) },
+  );
+  return { ok: true, data: null, error: null };
+}
+
+export type ExtractDatasetKindsArgs = {
+  datasetId: string;
+  database: Database;
+};
+
+export async function extractDatasetKinds({ datasetId, database }: ExtractDatasetKindsArgs) {
+  const kinds = await database.datasets
+    .aggregate([
+      { $match: { id: datasetId } },
+      { $unwind: { path: '$bank' } },
+      {
+        $project: {
+          _id: 0,
+          kind: '$bank.kind',
+          kinds: 1,
+        },
+      },
+      {
+        $group: {
+          _id: '$kind',
+          total: { $count: {} },
+          kinds: { $first: '$kinds' },
+        },
+      },
+      {
+        $addFields: {
+          current: {
+            $let: {
+              vars: {
+                kinds: {
+                  $objectToArray: '$$ROOT.kinds',
+                },
+              },
+              in: {
+                $arrayElemAt: [
+                  {
+                    $map: {
+                      input: {
+                        $filter: {
+                          input: '$$kinds',
+                          as: 'item',
+                          cond: {
+                            $eq: ['$$item.k', '$_id'],
+                          },
+                        },
+                      },
+                      as: 'item',
+                      in: '$$item.v',
+                    },
+                  },
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          kind: '$_id',
+          total: 1,
+          current: 1,
+        },
+      },
+    ])
+    .toArray();
+
+  return { ok: true, error: null, data: kinds };
 }

@@ -4,7 +4,7 @@ import type { User } from '../user';
 import { type ExecuteRedisArgs, executeRedis } from './redis';
 
 export type BaseExecuteArgs = {
-  query: string;
+  queries: string[];
   user: User;
   noReset?: boolean;
 };

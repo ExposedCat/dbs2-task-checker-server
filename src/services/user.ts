@@ -27,8 +27,8 @@ export type TestSession = {
   tasks: {
     kind: string;
     question: string;
-    solution: string;
-    userSolution: string | null;
+    solution: string[];
+    userSolution: string[] | null;
     correct: boolean;
     test: string | null;
   }[];
@@ -192,7 +192,11 @@ export type ExecuteQuestionResult = ServiceResponse<{
   wrong: string[];
 }>;
 
-export async function executeQuestion({ database, user, query }: ExecuteQuestionArgs): Promise<ExecuteQuestionResult> {
+export async function executeQuestion({
+  database,
+  user,
+  queries,
+}: ExecuteQuestionArgs): Promise<ExecuteQuestionResult> {
   if (!user.testSession) {
     return { ok: false, error: 'Test session is not started', data: null };
   }
@@ -221,7 +225,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
 
     const result = await execute({
       datasetId,
-      query: currentTask.test,
+      queries: [currentTask.test],
       user,
       noReset: true,
     });
@@ -234,7 +238,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
     return result;
   };
 
-  const userResult = await execute({ datasetId, query, user });
+  const userResult = await execute({ datasetId, queries, user });
   if (!userResult.ok) return userResult;
   const userTest = await getFinalResponse(userResult.data.response);
   if (!userTest.ok) {
@@ -243,7 +247,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
 
   const correctResult = await execute({
     datasetId,
-    query: currentTask.solution,
+    queries: currentTask.solution,
     user,
   });
   if (!correctResult.ok) {
@@ -270,7 +274,7 @@ export async function executeQuestion({ database, user, query }: ExecuteQuestion
     { user: user.user },
     {
       $set: {
-        [`testSession.tasks.${currentTaskIndex}.userSolution`]: query,
+        [`testSession.tasks.${currentTaskIndex}.userSolution`]: queries,
         [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
       },
     },

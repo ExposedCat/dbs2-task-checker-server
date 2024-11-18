@@ -3,7 +3,7 @@ import { createClient } from 'redis';
 import { parseCommand } from '../escape.js';
 import type { BaseExecuteArgs, ExecuteResult } from './index.js';
 
-export type LoadRedisArgs = Omit<ExecuteRedisArgs, 'query'>;
+export type LoadRedisArgs = Omit<ExecuteRedisArgs, 'queries'>;
 
 export type LoadRedisResponse = {
   response: string;
@@ -46,7 +46,7 @@ export type ExecuteRedisArgs = BaseExecuteArgs & {
 
 export async function executeRedis({
   user,
-  query,
+  queries,
   dataset,
   noReset = false,
 }: ExecuteRedisArgs): Promise<ExecuteResult> {
@@ -64,7 +64,6 @@ export async function executeRedis({
     return { ok, error: loadingResponse, data: null };
   }
 
-  const queries = query.split('\n');
   let batchResponse = '';
   for (const singleQuery of queries) {
     try {

@@ -2,8 +2,10 @@
   "name": "dbs2-task-checker-server",
   "version": "1.0.50",
   "scripts": {
+    "prod": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
-    "check": "biome check .",
+    "check": "bunx tsc --noEmit",
+    "lint": "biome check .",
     "format": "biome format . --write"
   },
   "dependencies": {

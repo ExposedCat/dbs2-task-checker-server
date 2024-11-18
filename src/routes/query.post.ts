@@ -10,6 +10,6 @@ export const QueryRoute = new Elysia({ name: 'Route.Query' })
     ({ user, body, database }): Promise<ServiceResponse<{ result: number | null }>> =>
       executeQuestion({ ...body, database, user }),
     {
-      body: t.Object({ query: t.String() }),
+      body: t.Object({ queries: t.Array(t.String()) }),
     },
   );

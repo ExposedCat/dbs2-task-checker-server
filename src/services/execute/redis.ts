@@ -27,6 +27,9 @@ export async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Prom
 
     try {
       for (const command of dataset) {
+        if (command.length === 0) {
+          continue;
+        }
         await client.sendCommand(command);
       }
       return { ok: true, response: 'Dataset loaded', client };

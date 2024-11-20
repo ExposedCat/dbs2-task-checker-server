@@ -7,8 +7,8 @@ export const QueryRoute = new Elysia({ name: 'Route.Query' })
   .use(RequireAuth)
   .post(
     '/query',
-    ({ user, body, database }): Promise<ServiceResponse<{ result: number | null }>> =>
-      executeQuestion({ ...body, database, user }),
+    async ({ user, body, database }): Promise<ServiceResponse<{ result: number | null }>> =>
+      await executeQuestion({ ...body, database, user }),
     {
       body: t.Object({ queries: t.Array(t.String()) }),
     },

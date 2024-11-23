@@ -24,6 +24,10 @@ export async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Prom
 
   if (!noReset) {
     await client.flushDb();
+    const indexes = await client.ft._list();
+    for (const index of indexes) {
+      await client.ft.dropIndex(index);
+    }
 
     try {
       for (const command of dataset) {

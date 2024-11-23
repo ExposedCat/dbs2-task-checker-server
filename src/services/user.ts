@@ -10,7 +10,7 @@ import type { ServiceResponse } from './response';
 export type Submission = {
   datasetId: DatasetName;
   grade: number;
-  session: TestSession;
+  session: TestSession['tasks'];
 };
 
 export type User = {
@@ -28,9 +28,13 @@ export type TestSession = {
     kind: string;
     question: string;
     solution: string[];
+    response: string | null;
+    testResponse: string | null;
     userSolution: string[] | null;
-    correct: boolean;
+    userResponse: string | null;
+    userTestResponse: string | null;
     test: string | null;
+    correct: boolean;
   }[];
 };
 
@@ -156,11 +160,16 @@ export async function startTestSession({
     };
   }
 
-  const tasks = sessionBank.map(item => ({
+  const tasks = sessionBank.map<TestSession['tasks'][number]>(item => ({
     ...item,
-    correct: false,
     userSolution: null,
+    response: null,
+    testResponse: null,
+    userResponse: null,
+    userTestResponse: null,
+    correct: false,
   }));
+
   await database.users.updateOne(
     { _id: user._id },
     {
@@ -261,14 +270,10 @@ export async function executeQuestion({
   }
 
   const isCorrect = userTest.data.response.trim() === correctTest.data.response.trim();
-  // console.log(`=====`, isCorrect);
-  // console.log(`User Solution '${query.trim()}'`);
-  // console.log(`User Result '${userResult.data.response.trim()}'`);
-  // console.log(`User Test '${userTest.data.response.trim()}'`);
-  // console.log(`Correct Solution '${currentTask.solution.trim()}'`);
-  // console.log(`Correct Result '${correctResult.data.response.trim()}'`);
-  // console.log(`Correct Test '${correctTest.data.response.trim()}'`);
-  // console.log(`Test query = '${currentTask.test ?? '<None>'}'`);
+  const userResponse = userResult.data.response.trim();
+  const userTestResponse = currentTask.test ? userTest.data.response.trim() : null;
+  const response = correctResult.data.response.trim();
+  const testResponse = currentTask.test ? correctTest.data.response.trim() : null;
 
   const newUser = await database.users.findOneAndUpdate(
     { user: user.user },
@@ -276,6 +281,10 @@ export async function executeQuestion({
       $set: {
         [`testSession.tasks.${currentTaskIndex}.userSolution`]: queries,
         [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
+        [`testSession.tasks.${currentTaskIndex}.response`]: response,
+        [`testSession.tasks.${currentTaskIndex}.testResponse`]: testResponse,
+        [`testSession.tasks.${currentTaskIndex}.userResponse`]: userResponse,
+        [`testSession.tasks.${currentTaskIndex}.userTestResponse`]: userTestResponse,
       },
     },
     {
@@ -298,7 +307,7 @@ export async function executeQuestion({
           submissions: {
             datasetId,
             grade: result,
-            session: newUser!.testSession!,
+            session: newUser!.testSession!.tasks,
           },
         },
         $set: {

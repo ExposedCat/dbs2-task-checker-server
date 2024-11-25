@@ -75,6 +75,49 @@ export async function getUser(args: GetUserArgs) {
   }
 }
 
+export type QuitTestSessionArgs = {
+  database: Database;
+  user: WithId<User>;
+  force?: boolean;
+};
+
+export async function quitTestSession({
+  database,
+  user,
+  force = false,
+}: QuitTestSessionArgs): Promise<ServiceResponse<{ grade: number | null; wrong: string[] }>> {
+  if (!user.testSession) {
+    return { ok: false, error: 'Test Session was not started', data: null };
+  }
+
+  const grade =
+    force || user.testSession.tasks.at(-1)?.userSolution !== null
+      ? user.testSession.tasks.reduce((score, task) => score + Number(task.correct), 0)
+      : null;
+
+  const wrong = user.testSession.tasks.filter(task => !task.correct).map(task => task.question);
+
+  if (grade !== null) {
+    await database.users.updateOne(
+      { user: user.user },
+      {
+        $push: {
+          submissions: {
+            datasetId: user.testSession.datasetId,
+            grade,
+            session: user.testSession!.tasks,
+          },
+        },
+        $set: {
+          testSession: null,
+        },
+      },
+    );
+  }
+
+  return { ok: true, error: null, data: { grade, wrong } };
+}
+
 export type StartTestSessionArgs = {
   database: Database;
   user: WithId<User>;
@@ -294,30 +337,18 @@ export async function executeQuestion({
 
   if (!newUser) return error500;
 
-  const result =
-    newUser.testSession!.tasks.at(-1)?.userSolution !== null
-      ? newUser.testSession!.tasks.reduce((score, task) => score + Number(task.correct), 0)
-      : null;
+  const quitResult = await quitTestSession({ database, user: newUser });
 
-  if (result !== null) {
-    await database.users.updateOne(
-      { user: user.user },
-      {
-        $push: {
-          submissions: {
-            datasetId,
-            grade: result,
-            session: newUser!.testSession!.tasks,
-          },
-        },
-        $set: {
-          testSession: null,
-        },
-      },
-    );
+  if (!quitResult.ok) {
+    return quitResult;
   }
 
-  const wrong = newUser.testSession?.tasks.filter(task => !task.correct).map(task => task.question) ?? [];
-
-  return { ok: true, data: { result, wrong }, error: null };
+  return {
+    ok: true,
+    data: {
+      result: quitResult.data.grade,
+      wrong: quitResult.data.wrong,
+    },
+    error: null,
+  };
 }

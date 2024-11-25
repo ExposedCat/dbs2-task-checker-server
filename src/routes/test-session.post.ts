@@ -1,7 +1,7 @@
 import Elysia, { t } from 'elysia';
 import { RequireAuth } from '../middlewares/auth';
 import type { DatasetName } from '../services/execute';
-import { startTestSession } from '../services/user';
+import { quitTestSession, startTestSession } from '../services/user';
 
 export const TestSessionRoute = new Elysia({ name: 'Route.TestSession' }) //
   .use(RequireAuth)
@@ -23,3 +23,7 @@ export const TestSessionRoute = new Elysia({ name: 'Route.TestSession' }) //
     },
     { body: t.Object({ datasetId: t.String() }) },
   );
+
+export const QuitTestSessionRoute = new Elysia({ name: 'Route.QuitTestSession' }) //
+  .use(RequireAuth)
+  .post('/quit', async ({ database, user }) => await quitTestSession({ database, user, force: true }));

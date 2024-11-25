@@ -11,7 +11,7 @@ import { DeleteDatasetRoute } from './routes/delete-dataset.post.js';
 import { LoginRoute } from './routes/login.post.js';
 import { QueryRoute } from './routes/query.post.js';
 import { SessionRoute } from './routes/session.get.js';
-import { TestSessionRoute } from './routes/test-session.post.js';
+import { QuitTestSessionRoute, TestSessionRoute } from './routes/test-session.post.js';
 
 const app = new Elysia()
   .use(RequireBase)
@@ -23,6 +23,7 @@ const app = new Elysia()
   .use(SessionRoute)
   .use(DatasetsRoute)
   .use(TestSessionRoute)
+  .use(QuitTestSessionRoute)
   .use(QueryRoute)
   .use(DatasetKindsRoute)
   .use(SetDatasetKindsRoute)

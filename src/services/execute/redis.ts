@@ -15,7 +15,7 @@ export type LoadRedisResponse = {
   | { ok: false; client: null }
 );
 
-export async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<LoadRedisResponse> {
+async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<LoadRedisResponse> {
   const client = createClient({
     url: `redis://default:${user.password}@127.0.0.1:${user.port}`,
   });

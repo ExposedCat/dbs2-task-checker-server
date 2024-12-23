@@ -1,47 +1,48 @@
-import { readDataset } from '../dataset.js'
-import type { ServiceResponse } from '../response'
-import type { User } from '../user'
-import { type ExecuteRedisArgs, executeRedis } from './redis'
+import { readDataset } from '../dataset.js';
+import type { ServiceResponse } from '../response';
+import type { User } from '../user';
+import { executeMongoDb } from './mongodb.js';
+import { type ExecuteRedisArgs, executeRedis } from './redis';
 
 export type BaseExecuteArgs = {
-  queries: string[]
-  user: User
-  noReset?: boolean
-}
+  queries: string[];
+  user: User;
+  noReset?: boolean;
+};
 
-export type DatasetName = 'redis' | 'RedisBasic' | 'RedisAdvanced'
+export type DatasetName = 'redis' | 'RedisBasic' | 'RedisAdvanced' | 'mongodb';
 
 export type DatasetArgsMap = {
-  redis: ExecuteRedisArgs
-}
+  redis: ExecuteRedisArgs;
+};
 
 export type ExecuteArgs = {
-  datasetId: DatasetName
-} & BaseExecuteArgs
+  datasetId: DatasetName;
+} & BaseExecuteArgs;
 
-export type ExecuteResult = ServiceResponse<{ response: string }>
+export type ExecuteResult = ServiceResponse<{ response: string }>;
 
 // FIXME: Move to service
 const { ok, data: redisDataset } = await readDataset({
   datasetId: 'redis',
-  format: 'json'
-})
+  format: 'json',
+});
 
-export function execute({
-  datasetId,
-  ...args
-}: ExecuteArgs): Promise<ExecuteResult> {
+export function execute({ datasetId, ...args }: ExecuteArgs): Promise<ExecuteResult> {
   if (!ok) {
-    throw redisDataset
+    throw redisDataset;
   }
 
   switch (datasetId) {
     case 'redis':
     case 'RedisBasic':
     case 'RedisAdvanced':
-      return executeRedis({ ...args, dataset: redisDataset })
+      return executeRedis({ ...args, dataset: redisDataset });
+
+    case 'mongodb':
+      return executeMongoDb(args);
 
     default:
-      throw new Error(`Unsupported dataset '${datasetId}'`)
+      throw new Error(`Unsupported dataset '${datasetId}'`);
   }
 }

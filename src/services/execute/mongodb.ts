@@ -1,0 +1,57 @@
+import { $ } from 'bun';
+import type { User } from '../user.js';
+import type { BaseExecuteArgs, ExecuteResult } from './index.js';
+
+export type LoadMongodbArgs = Omit<BaseExecuteArgs, 'queries' | 'dataset'>;
+
+export type LoadMongodbResponse = {
+  response: string;
+  ok: boolean;
+};
+
+async function executeAuthorizedRaw(user: User, command: string): Promise<{ ok: boolean; output: string }> {
+  const result =
+    await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} --eval "${command}"`;
+  return { ok: result.exitCode === 0, output: result.text() };
+}
+
+async function loadMongoDb({ user, noReset }: LoadMongodbArgs): Promise<LoadMongodbResponse> {
+  if (!noReset) {
+    try {
+      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} --eval 'db.dropDatabase()'`.quiet();
+      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} /home/yuliia/web/dbs2-task-checker-server/datasets/mongodb/dataset.js`.quiet();
+      return { ok: true, response: 'Dataset loaded' };
+    } catch (error) {
+      const textError = error instanceof Error ? error.message : 'Unkown error';
+      return { ok: false, response: textError };
+    }
+  }
+
+  return { ok: true, response: 'Dataset not loaded (noReset = true)' };
+}
+
+export async function executeMongoDb({ user, queries, noReset = false }: BaseExecuteArgs): Promise<ExecuteResult> {
+  const { ok, response: loadingResponse } = await loadMongoDb({ user, noReset });
+
+  if (!ok) {
+    return { ok, error: loadingResponse, data: null };
+  }
+
+  const response = await executeAuthorizedRaw(
+    user,
+    queries
+      .map(query => query.trim())
+      .join(';')
+      .replaceAll(';;', ';'),
+  );
+
+  if (!response.ok) {
+    return { ok: false, error: response.output, data: null };
+  }
+
+  return {
+    ok: true,
+    data: { response: response.output },
+    error: null,
+  };
+}

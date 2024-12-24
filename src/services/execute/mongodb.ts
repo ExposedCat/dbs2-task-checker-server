@@ -1,4 +1,4 @@
-import { $ } from 'bun';
+import { $, type ShellError } from 'bun';
 import type { User } from '../user.js';
 import type { BaseExecuteArgs, ExecuteResult } from './index.js';
 
@@ -10,19 +10,28 @@ export type LoadMongodbResponse = {
 };
 
 async function executeAuthorizedRaw(user: User, command: string): Promise<{ ok: boolean; output: string }> {
-  const result =
-    await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} --eval "${command}"`;
-  return { ok: result.exitCode === 0, output: result.text() };
+  try {
+    const result =
+      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} --eval "${command}"`;
+    return { ok: result.exitCode === 0, output: result.text() };
+  } catch (_error) {
+    const error = _error as ShellError;
+    const textError = 'info' in error ? (error.info as any).stderr : 'Unkown error';
+    return { ok: false, output: textError };
+  }
 }
 
 async function loadMongoDb({ user, noReset }: LoadMongodbArgs): Promise<LoadMongodbResponse> {
   if (!noReset) {
     try {
-      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} --eval 'db.dropDatabase()'`.quiet();
-      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} /home/yuliia/web/dbs2-task-checker-server/datasets/mongodb/dataset.js`.quiet();
+      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} --eval 'db.getCollectionNames().forEach(collection => db[collection].drop())'`;
+
+      await $`mongosh -u ${encodeURIComponent(user.user)} -p '${encodeURIComponent(user.password)}' --port 42222 ${encodeURIComponent(user.user)} /home/yuliia/web/dbs2-task-checker-server/datasets/mongodb/dataset.js`;
+
       return { ok: true, response: 'Dataset loaded' };
-    } catch (error) {
-      const textError = error instanceof Error ? error.message : 'Unkown error';
+    } catch (_error) {
+      const error = _error as ShellError;
+      const textError = 'info' in error ? (error.info as any).stderr : 'Unkown error';
       return { ok: false, response: textError };
     }
   }

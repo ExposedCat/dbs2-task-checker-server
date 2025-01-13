@@ -46,7 +46,10 @@ async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<Loa
       }
       return { ok: true, response: 'Dataset loaded', client };
     } catch (error) {
-      const textError = error instanceof Error ? String(error) : 'Unkown error (while executing request)';
+      const textError =
+        error instanceof Error
+          ? `Unexpected Error (while loading dataset): ${error}`
+          : 'Unkown error (while loading dataset)';
       await client.quit();
       return { ok: false, response: textError, client: null };
     }
@@ -82,14 +85,17 @@ export async function executeRedis({
   let batchResponse = '';
   for (const singleQuery of queries) {
     try {
-      // console.log('Executing:', singleQuery);
+      console.log('Executing:', parseCommand(singleQuery));
       const response = await client.sendCommand(parseCommand(singleQuery));
       // console.log('Response:', response);
       const textResponse = response !== undefined ? JSON.stringify(response, null, 1) : '<empty>';
       batchResponse += `${textResponse}\n`;
     } catch (error) {
       await client.quit();
-      const textError = error instanceof Error ? error.message : 'Unkown error';
+      const textError =
+        error instanceof Error
+          ? `Unexpected Error (while executing command): ${error}`
+          : 'Unkown error (while executing command)';
       return { ok: false, error: textError, data: null };
     }
   }

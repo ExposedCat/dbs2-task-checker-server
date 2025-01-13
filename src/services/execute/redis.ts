@@ -27,7 +27,8 @@ async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<Loa
     let last: string = '<none>';
     try {
       indexes = await client.ft._list();
-      for (const index of indexes) {
+      for (const _index of indexes) {
+        const index = _index.trim();
         last = index;
         await client.ft.dropIndex(index);
       }
@@ -93,7 +94,7 @@ export async function executeRedis({
   for (const singleQuery of queries) {
     try {
       // console.log('Executing:', parseCommand(singleQuery));
-      const response = await client.sendCommand(parseCommand(singleQuery));
+      const response = await client.sendCommand(parseCommand(singleQuery.trim()));
       // console.log('Response:', response);
       const textResponse = response !== undefined ? JSON.stringify(response, null, 1) : '<empty>';
       batchResponse += `${textResponse}\n`;

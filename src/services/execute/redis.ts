@@ -23,16 +23,23 @@ async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<Loa
   await client.connect();
 
   if (!noReset) {
+    let indexes: string[] = [];
+    let last: string = '<none>';
     try {
-      const indexes = await client.ft._list();
+      indexes = await client.ft._list();
       for (const index of indexes) {
+        last = index;
         await client.ft.dropIndex(index);
       }
       await client.flushDb();
     } catch (error) {
+      const metadata = `Indexes to flush: ${indexes.join(', ')}. Failed on: ${last}`;
       return {
         ok: false,
-        response: error instanceof Error ? String(error) : 'Unkown error (while flushing db)',
+        response:
+          error instanceof Error
+            ? `Unexpected Error (while flushing database): ${error}. ${metadata}`
+            : `Unkown error (while flushing database). ${metadata}`,
         client: null,
       };
     }
@@ -85,7 +92,7 @@ export async function executeRedis({
   let batchResponse = '';
   for (const singleQuery of queries) {
     try {
-      console.log('Executing:', parseCommand(singleQuery));
+      // console.log('Executing:', parseCommand(singleQuery));
       const response = await client.sendCommand(parseCommand(singleQuery));
       // console.log('Response:', response);
       const textResponse = response !== undefined ? JSON.stringify(response, null, 1) : '<empty>';

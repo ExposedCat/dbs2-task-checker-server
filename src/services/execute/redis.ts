@@ -27,14 +27,13 @@ async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<Loa
     let last: string = '<none>';
     try {
       indexes = await client.ft._list();
-      for (const _index of indexes) {
-        const index = _index.trim();
+      for (const index of indexes) {
         last = index;
         await client.ft.dropIndex(index);
       }
       await client.flushDb();
     } catch (error) {
-      const metadata = `Indexes to flush: ${indexes.join(', ')}. Failed on: ${last}`;
+      const metadata = `Indexes to flush: ${indexes.map(index => `"${index}"`).join(', ')}. Failed on: "${last}"`;
       return {
         ok: false,
         response:

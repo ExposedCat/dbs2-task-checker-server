@@ -23,11 +23,19 @@ async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<Loa
   await client.connect();
 
   if (!noReset) {
-    const indexes = await client.ft._list();
-    for (const index of indexes) {
-      await client.ft.dropIndex(index);
+    try {
+      const indexes = await client.ft._list();
+      for (const index of indexes) {
+        await client.ft.dropIndex(index);
+      }
+      await client.flushDb();
+    } catch (error) {
+      return {
+        ok: false,
+        response: error instanceof Error ? String(error) : 'Unkown error (while flushing db)',
+        client: null,
+      };
     }
-    await client.flushDb();
 
     try {
       for (const command of dataset) {
@@ -38,7 +46,7 @@ async function loadRedis({ user, dataset, noReset }: LoadRedisArgs): Promise<Loa
       }
       return { ok: true, response: 'Dataset loaded', client };
     } catch (error) {
-      const textError = error instanceof Error ? error.message : 'Unkown error';
+      const textError = error instanceof Error ? String(error) : 'Unkown error (while executing request)';
       await client.quit();
       return { ok: false, response: textError, client: null };
     }

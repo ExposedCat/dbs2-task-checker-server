@@ -304,7 +304,36 @@ export async function executeQuestion({
 
   const userResult = await execute({ datasetId, queries, user });
   if (!userResult.ok) return userResult;
+
+  const saveResult = async (
+    queries: string[],
+    isCorrect: boolean,
+    response: string | null,
+    testResponse: string | null,
+    userResponse: string | null,
+    userTestResponse: string | null,
+  ) => {
+    return database.users.findOneAndUpdate(
+      { user: user.user },
+      {
+        $set: {
+          [`testSession.tasks.${currentTaskIndex}.userSolution`]: queries,
+          [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
+          [`testSession.tasks.${currentTaskIndex}.response`]: response,
+          [`testSession.tasks.${currentTaskIndex}.testResponse`]: testResponse,
+          [`testSession.tasks.${currentTaskIndex}.userResponse`]: userResponse,
+          [`testSession.tasks.${currentTaskIndex}.userTestResponse`]: userTestResponse,
+        },
+      },
+      {
+        returnDocument: 'after',
+      },
+    );
+  };
+
   if (userResult.data?.skipped) {
+    const newUser = await saveResult(queries, false, null, null, null, null);
+    if (!newUser) return error500;
     return {
       ok: true,
       error: null,
@@ -340,23 +369,7 @@ export async function executeQuestion({
   const response = correctResult.data.response.trim();
   const testResponse = currentTask.test ? correctTest.data.response.trim() : null;
 
-  const newUser = await database.users.findOneAndUpdate(
-    { user: user.user },
-    {
-      $set: {
-        [`testSession.tasks.${currentTaskIndex}.userSolution`]: queries,
-        [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
-        [`testSession.tasks.${currentTaskIndex}.response`]: response,
-        [`testSession.tasks.${currentTaskIndex}.testResponse`]: testResponse,
-        [`testSession.tasks.${currentTaskIndex}.userResponse`]: userResponse,
-        [`testSession.tasks.${currentTaskIndex}.userTestResponse`]: userTestResponse,
-      },
-    },
-    {
-      returnDocument: 'after',
-    },
-  );
-
+  const newUser = await saveResult(queries, isCorrect, response, testResponse, userResponse, userTestResponse);
   if (!newUser) return error500;
 
   const quitResult = await quitTestSession({ database, user: newUser });

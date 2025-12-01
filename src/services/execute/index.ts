@@ -20,7 +20,7 @@ export type ExecuteArgs = {
   datasetId: DatasetName;
 } & BaseExecuteArgs;
 
-export type ExecuteResult = ServiceResponse<{ response: string }>;
+export type ExecuteResult = ServiceResponse<{ response: string; skipped?: boolean }>;
 
 // FIXME: Move to service
 const { ok, data: redisDataset } = await readDataset({

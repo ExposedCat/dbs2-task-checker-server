@@ -264,6 +264,18 @@ export async function executeQuestion({
   }
   const currentTask = tasks[currentTaskIndex];
 
+  const hasUserQueries = queries.some(query => query.trim().length > 0);
+  if (!hasUserQueries) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        result: null,
+        wrong: [],
+      },
+    };
+  }
+
   const error500: ExecuteQuestionResult = {
     ok: false,
     error: 'Failed to test task. Please report to your teacher',
@@ -292,6 +304,16 @@ export async function executeQuestion({
 
   const userResult = await execute({ datasetId, queries, user });
   if (!userResult.ok) return userResult;
+  if (userResult.data?.skipped) {
+    return {
+      ok: true,
+      error: null,
+      data: {
+        result: null,
+        wrong: [],
+      },
+    };
+  }
   const userTest = await getFinalResponse(userResult.data.response);
   if (!userTest.ok) {
     return error500;

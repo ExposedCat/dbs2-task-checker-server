@@ -46,13 +46,17 @@ export async function executeMongoDb({ user, queries, noReset = false }: BaseExe
     return { ok, error: loadingResponse, data: null };
   }
 
-  const response = await executeAuthorizedRaw(
-    user,
-    queries
-      .map(query => query.trim())
-      .join(';')
-      .replaceAll(';;', ';'),
-  );
+  const normalizedQueries = queries.map(query => query.trim()).filter(query => query.length > 0);
+
+  if (normalizedQueries.length === 0) {
+    return {
+      ok: true,
+      data: { response: loadingResponse ?? '', skipped: true },
+      error: null,
+    };
+  }
+
+  const response = await executeAuthorizedRaw(user, normalizedQueries.join(';').replaceAll(';;', ';'));
 
   if (!response.ok) {
     return { ok: false, error: response.output, data: null };

@@ -89,11 +89,26 @@ export async function executeRedis({
     return { ok, error: loadingResponse, data: null };
   }
 
+  if (!client) {
+    return { ok: false, error: 'Redis client was not initialized', data: null };
+  }
+
+  const normalizedQueries = queries.map(query => query.trim()).filter(query => query.length > 0);
+
+  if (normalizedQueries.length === 0) {
+    await client.quit();
+    return {
+      ok: true,
+      data: { response: loadingResponse ?? '', skipped: true },
+      error: null,
+    };
+  }
+
   let batchResponse = '';
-  for (const singleQuery of queries) {
+  for (const singleQuery of normalizedQueries) {
     try {
       // console.log('Executing:', parseCommand(singleQuery));
-      const response = await client.sendCommand(parseCommand(singleQuery.trim()));
+      const response = await client.sendCommand(parseCommand(singleQuery));
       // console.log('Response:', response);
       const textResponse = response !== undefined ? JSON.stringify(response, null, 1) : '<empty>';
       batchResponse += `${textResponse}\n`;

@@ -5,7 +5,7 @@ import { RequireBase } from './base.js';
 
 export const RequireAuth = new Elysia({ name: 'Middleware.Auth' })
   .use(RequireBase)
-  .onError({ as: 'local' }, ({ error }) => error.cause ?? 'Unknown error')
+  .onError({ as: 'local' }, ({ error }) => (error as Error).cause ?? 'Unknown error')
   .derive(async ({ database, jwt, headers }) => {
     const token = headers['authorization'];
     const data = await jwt.verify(token);

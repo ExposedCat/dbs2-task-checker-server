@@ -264,23 +264,73 @@ export async function executeQuestion({
   }
   const currentTask = tasks[currentTaskIndex];
 
-  const hasUserQueries = queries.some(query => query.trim().length > 0);
-  if (!hasUserQueries) {
-    return {
-      ok: true,
-      error: null,
-      data: {
-        result: null,
-        wrong: [],
-      },
-    };
-  }
+  const normalizedQueries = queries.map(query => query.trim()).filter(query => query.length > 0);
 
   const error500: ExecuteQuestionResult = {
     ok: false,
     error: 'Failed to test task. Please report to your teacher',
     data: null,
   };
+
+  const finalizeTask = async ({
+    userSolution,
+    correct,
+    response,
+    testResponse,
+    userResponse,
+    userTestResponse,
+  }: {
+    userSolution: string[];
+    correct: boolean;
+    response: string | null;
+    testResponse: string | null;
+    userResponse: string | null;
+    userTestResponse: string | null;
+  }): Promise<ExecuteQuestionResult> => {
+    const newUser = await database.users.findOneAndUpdate(
+      { user: user.user },
+      {
+        $set: {
+          [`testSession.tasks.${currentTaskIndex}.userSolution`]: userSolution,
+          [`testSession.tasks.${currentTaskIndex}.correct`]: correct,
+          [`testSession.tasks.${currentTaskIndex}.response`]: response,
+          [`testSession.tasks.${currentTaskIndex}.testResponse`]: testResponse,
+          [`testSession.tasks.${currentTaskIndex}.userResponse`]: userResponse,
+          [`testSession.tasks.${currentTaskIndex}.userTestResponse`]: userTestResponse,
+        },
+      },
+      {
+        returnDocument: 'after',
+      },
+    );
+
+    if (!newUser) return error500;
+
+    const quitResult = await quitTestSession({ database, user: newUser });
+    if (!quitResult.ok) {
+      return quitResult;
+    }
+
+    return {
+      ok: true,
+      data: {
+        result: quitResult.data.grade,
+        wrong: quitResult.data.wrong,
+      },
+      error: null,
+    };
+  };
+
+  if (normalizedQueries.length === 0) {
+    return await finalizeTask({
+      userSolution: [],
+      correct: false,
+      response: null,
+      testResponse: null,
+      userResponse: null,
+      userTestResponse: null,
+    });
+  }
 
   const getFinalResponse = async (response: string): Promise<ServiceResponse<{ response: string }>> => {
     if (!currentTask.test) {
@@ -305,43 +355,15 @@ export async function executeQuestion({
   const userResult = await execute({ datasetId, queries, user });
   if (!userResult.ok) return userResult;
 
-  const saveResult = async (
-    queries: string[],
-    isCorrect: boolean,
-    response: string | null,
-    testResponse: string | null,
-    userResponse: string | null,
-    userTestResponse: string | null,
-  ) => {
-    return database.users.findOneAndUpdate(
-      { user: user.user },
-      {
-        $set: {
-          [`testSession.tasks.${currentTaskIndex}.userSolution`]: queries,
-          [`testSession.tasks.${currentTaskIndex}.correct`]: isCorrect,
-          [`testSession.tasks.${currentTaskIndex}.response`]: response,
-          [`testSession.tasks.${currentTaskIndex}.testResponse`]: testResponse,
-          [`testSession.tasks.${currentTaskIndex}.userResponse`]: userResponse,
-          [`testSession.tasks.${currentTaskIndex}.userTestResponse`]: userTestResponse,
-        },
-      },
-      {
-        returnDocument: 'after',
-      },
-    );
-  };
-
   if (userResult.data?.skipped) {
-    const newUser = await saveResult(queries, false, null, null, null, null);
-    if (!newUser) return error500;
-    return {
-      ok: true,
-      error: null,
-      data: {
-        result: null,
-        wrong: [],
-      },
-    };
+    return await finalizeTask({
+      userSolution: normalizedQueries,
+      correct: false,
+      response: null,
+      testResponse: null,
+      userResponse: null,
+      userTestResponse: null,
+    });
   }
   const userTest = await getFinalResponse(userResult.data.response);
   if (!userTest.ok) {
@@ -369,21 +391,12 @@ export async function executeQuestion({
   const response = correctResult.data.response.trim();
   const testResponse = currentTask.test ? correctTest.data.response.trim() : null;
 
-  const newUser = await saveResult(queries, isCorrect, response, testResponse, userResponse, userTestResponse);
-  if (!newUser) return error500;
-
-  const quitResult = await quitTestSession({ database, user: newUser });
-
-  if (!quitResult.ok) {
-    return quitResult;
-  }
-
-  return {
-    ok: true,
-    data: {
-      result: quitResult.data.grade,
-      wrong: quitResult.data.wrong,
-    },
-    error: null,
-  };
+  return await finalizeTask({
+    userSolution: queries,
+    correct: isCorrect,
+    response,
+    testResponse,
+    userResponse,
+    userTestResponse,
+  });
 }
